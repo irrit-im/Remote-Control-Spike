@@ -20,7 +20,8 @@ CHANNEL = 1
 
 # Hardware Definition
 hub = PrimeHub(broadcast_channel=CHANNEL) # make sure the channle matches with the observing channle. if more than one controller is broadcasting, change to different channles.
-force_sensor = ForceSensor(Port.A) 
+speed_controll = ForceSensor(Port.A) 
+wall_controll = ForceSensor(Port.B) 
 
 
 # __________________________________________________________________________________________________
@@ -28,29 +29,38 @@ force_sensor = ForceSensor(Port.A)
 # __________________________________________________________________________________________________
 
 def read_contoller():
-    # Stop the robot completely by pressing the center button
-    stop = Button.CENTER.is_pressed()
+    """
+    force1 - drive
+    center + force - reverse drive
+    only center - stop
+    sides - turn
+    force2 + sides - wall
+    bluetooth - lock wall
+    """
 
-    # controll the chassis' movement by tilting the controller:  base_speed => pitch, turn_rate => roll
-    base_speed, turn_rate = hub.imu.tilt()
-    base_speed *= 7
-    turn_rate *= 2
+    # driving straight
+    drive_direction = -1 if Button.CENTER in Buttons.pressed() else 1 # drive direction
+    stop = True if Button.CENTER in Buttons.pressed() else False # stop?
+    base_speed = speed_controll.force() * 50 * drive_direction # drive speed 
 
-    # controll the wall using the sode buttons. both buttons => stop
-    global wall_speed
-    if Button.LEFT.is_pressed() and Button.RIGHT.is_pressed(): 
+    # wall / wheels turn direction
+    if Button.RIGHT in Buttons.pressed():
+        turn_direction = 1
+    elif Button.RIGHT in Buttons.pressed():
+        turn_direction = -1
+    else: 
+        turn_direction = 0
+
+    if wall_controll.pressed(): # wall start
+        wall_speed  += 10 * turn_direction
+        turn_rate = 0
+    else: # turn
+        turn_rate += turn_direction
         wall_speed = 0
-    elif Button.RIGHT.is_pressed():
-        wall_speed += WALL_CHNG
-    elif Button.LEFT.is_pressed():
-        wall_speed += WALL_CHNG
 
-    # lock the wall to an abs degree by pressing the force sensor
-    lock_wall = force_sensor.pressed()
-    if lock_wall: wall_speed = 0
-    
+    lock_wall = True in Button.BLUETHOOTH in Buttons.pressed() else False # lock wall
+
     return stop, turn_rate, base_speed, lock_wall, wall_speed
-
         
 
 # __________________________________________________________________________________________________
@@ -59,7 +69,8 @@ def read_contoller():
 
 
 hub.light.on(Color.MAGENTA)
-system.set_stop_button(Button.BLUETHOOTH)
+system.set_stop_button((Button.BLUETHOOTH, Button.CENTER))
+turn_rate = 0
 wall_speed = 0
 
 while True:
