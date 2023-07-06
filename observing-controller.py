@@ -12,10 +12,11 @@ from pybricks.tools import wait, StopWatch
 W_DIAMETER = 61.6  # mm
 W_DISTANCE = 91  # mm
 W_CIRC = W_DIAMETER * 3.1415926535  # mm
-WHEELS_WALL_RATIO = 4  # TODO
-WALL_MOTOR_RATIO = 35 / 6  # TODO
+WHEELS_WALL_RATIO = 4
+WALL_MOTOR_RATIO = 35 / 6 
 
 
+WALL_SPEED = 300
 CHANNEL = 1
 
 # Hardware Definition
@@ -33,20 +34,17 @@ wheels = DriveBase(leftW, rightW, wheel_diameter=W_DIAMETER, axle_track=W_DISTAN
 # __________________________________________________________________________________________________
 
 
-def move(stop, base_speed, turn_rate, lock_wall, wall_speed):
+def move(base_speed, turn_rate, lock_wall, wall_direction):
     """ 
     base_speed: int (turn/s)
     turn_rate: int (deg/s)
     """
-    if stop:
-        wheels.stop()
 
+    wheels.drive(base_speed, turn_rate)
+    if lock_wall:
+        wall.run(-turn_rate)
     else:
-        wheels.drive(base_speed, turn_rate)
-        if lock_wall:
-            wall.run(-turn_rate)
-        else:
-            wall.run(wall_speed)
+        wall.run(wall_direction * WALL_SPEED)
         
 
 # __________________________________________________________________________________________________
@@ -54,6 +52,7 @@ def move(stop, base_speed, turn_rate, lock_wall, wall_speed):
 # __________________________________________________________________________________________________
 
 hub.light.on(Color.GREEN)
+
 while True:
-    stop, turn_rate, base_speed, lock_wall, wall_speed = hub.ble.observe(CHANNEL)
-    move(stop, turn_rate, base_speed, lock_wall)
+    turn_rate, base_speed, lock_wall, wall_direction = hub.ble.observe(CHANNEL)
+    move(turn_rate, base_speed, lock_wall)
